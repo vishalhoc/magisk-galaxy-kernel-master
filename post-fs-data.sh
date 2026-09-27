@@ -1,7 +1,25 @@
 #!/system/bin/sh
-# Fix Build Fingerprint Inconsistency Warning on Boot
+# Fix Build Fingerprint & VINTF Kernel Compatibility Mismatch on Boot
 # Eliminates: "There's an internal problem with your device. Contact your manufacturer for details."
 
+MODDIR=${0%/*}
+VINTF_SRC="/data/adb/modules/galaxy-kernel-master/system/etc/vintf"
+if [ ! -d "$VINTF_SRC" ] && [ -d "$MODDIR/system/etc/vintf" ]; then
+    VINTF_SRC="$MODDIR/system/etc/vintf"
+fi
+
+# 1. Bind-mount patched VINTF compatibility matrices (allows CONFIG_SYSVIPC=y)
+if [ -d "$VINTF_SRC" ]; then
+    for f in "$VINTF_SRC"/compatibility_matrix.*.xml; do
+        base="${f##*/}"
+        target="/system/etc/vintf/$base"
+        if [ -f "$f" ] && [ -f "$target" ]; then
+            mount -o bind "$f" "$target" 2>/dev/null
+        fi
+    done
+fi
+
+# 2. Harmonize all partition fingerprints to match system
 FP=$(resetprop ro.build.fingerprint)
 if [ -z "$FP" ]; then
     FP="samsung/a32xins/a32x:13/TP1A.220624.014/M326BDDSCCYD1:user/release-keys"
@@ -14,7 +32,6 @@ fi
 
 DATE=$(resetprop ro.build.date)
 
-# Harmonize all partition fingerprints to match system
 for prop in \
     ro.bootimage.build.fingerprint \
     ro.vendor.build.fingerprint \
