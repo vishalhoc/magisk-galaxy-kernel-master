@@ -1,0 +1,5 @@
+# Synchronize build fingerprints across all partitions to prevent "internal problem" warning
+ro.bootimage.build.fingerprint=samsung/a32xins/a32x:13/TP1A.220624.014/M326BDDSCCYD1:user/release-keys
+ro.vendor.build.fingerprint=samsung/a32xins/a32x:13/TP1A.220624.014/M326BDDSCCYD1:user/release-keys
+ro.odm.build.fingerprint=samsung/a32xins/a32x:13/TP1A.220624.014/M326BDDSCCYD1:user/release-keys
+ro.vendor_dlkm.build.fingerprint=samsung/a32xins/a32x:13/TP1A.220624.014/M326BDDSCCYD1:user/release-keys

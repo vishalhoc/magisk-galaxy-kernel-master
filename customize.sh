@@ -8,6 +8,8 @@ ui_print "***********************************************"
 ui_print "- Installing Kernel Master & Router Engine..."
 set_perm_recursive $MODPATH 0 0 0755 0644
 set_perm $MODPATH/service.sh 0 0 0755
+set_perm $MODPATH/action.sh 0 0 0755
+set_perm $MODPATH/post-fs-data.sh 0 0 0755
 set_perm $MODPATH/system/bin/kernel_master 0 0 0755
 set_perm $MODPATH/web/cgi-bin/api.cgi 0 0 0755
 
