@@ -1,0 +1,6 @@
+id=galaxy-kernel-master
+name=Galaxy Kernel Master & Router Control Panel
+version=v1.0
+versionCode=100
+author=vishalhoc & Antigravity
+description=Kernel-level performance optimizer, router engine, 5G modem controller, and Web UI control panel for Samsung Galaxy M32 5G (MT6853).

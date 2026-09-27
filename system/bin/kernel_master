@@ -1,0 +1,278 @@
+#!/system/bin/sh
+# Galaxy Kernel Master & Router Control Engine
+# Samsung Galaxy M32 5G (MT6853 / Dimensity 720)
+
+STATE_DIR="/data/adb/kernel_master_state"
+mkdir -p "$STATE_DIR"
+
+save_factory_defaults() {
+    if [ ! -f "$STATE_DIR/factory_defaults_saved" ]; then
+        cat /proc/sys/net/ipv4/ip_forward > "$STATE_DIR/orig_ip_forward" 2>/dev/null
+        cat /proc/sys/net/ipv6/conf/all/forwarding > "$STATE_DIR/orig_ipv6_forward" 2>/dev/null
+        cat /proc/sys/net/ipv4/tcp_congestion_control > "$STATE_DIR/orig_tcp_cong" 2>/dev/null
+        cat /proc/sys/vm/swappiness > "$STATE_DIR/orig_swappiness" 2>/dev/null
+        cat /proc/sys/vm/dirty_ratio > "$STATE_DIR/orig_dirty_ratio" 2>/dev/null
+        cat /proc/sys/vm/dirty_background_ratio > "$STATE_DIR/orig_dirty_bg_ratio" 2>/dev/null
+        cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor > "$STATE_DIR/orig_cpu_gov" 2>/dev/null
+        cat /proc/sys/net/core/rmem_max > "$STATE_DIR/orig_rmem_max" 2>/dev/null
+        cat /proc/sys/net/core/wmem_max > "$STATE_DIR/orig_wmem_max" 2>/dev/null
+        settings get global tether_dun_required > "$STATE_DIR/orig_dun_required" 2>/dev/null
+        touch "$STATE_DIR/factory_defaults_saved"
+    fi
+}
+
+save_factory_defaults
+
+action="$1"
+shift
+
+case "$action" in
+    status)
+        # Gather live system metrics
+        ip_fwd=$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || echo 0)
+        ipv6_fwd=$(cat /proc/sys/net/ipv6/conf/all/forwarding 2>/dev/null || echo 0)
+        tcp_cong=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null || echo unknown)
+        tcp_avail=$(cat /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null || echo unknown)
+        cpu_gov=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
+        cpu_cur_freq=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)
+        cpu_big_freq=$(cat /sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)
+        swappiness=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo 0)
+        dirty_ratio=$(cat /proc/sys/vm/dirty_ratio 2>/dev/null || echo 0)
+        zram_algo=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null || echo unknown)
+        zram_size=$(cat /sys/block/zram0/disksize 2>/dev/null || echo 0)
+        
+        # Check NAT rule
+        if iptables -t nat -C POSTROUTING -o rmnet+ -j MASQUERADE 2>/dev/null; then
+            nat_active=1
+        else
+            nat_active=0
+        fi
+        
+        # Check DUN bypass
+        dun_val=$(settings get global tether_dun_required 2>/dev/null)
+        if [ "$dun_val" = "0" ]; then
+            dun_active=1
+        else
+            dun_active=0
+        fi
+        
+        # Check Wireless ADB
+        adb_port=$(getprop service.adb.tcp.port 2>/dev/null || echo "-1")
+        if [ "$adb_port" = "5555" ]; then
+            adb_active=1
+        else
+            adb_active=0
+        fi
+        
+        # Check thermal temp
+        soc_temp=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 0)
+        soc_temp_c=$((soc_temp / 1000))
+        
+        # Network interfaces
+        ifaces=$(ip -o link show | awk -F': ' '{print $2}' | tr '\n' ' ')
+        
+        # 5G/LTE radio
+        net_type=$(getprop gsm.network.type 2>/dev/null || echo Unknown)
+        sim_op=$(getprop gsm.sim.operator.alpha 2>/dev/null || echo Unknown)
+        kernel_ver=$(uname -r 2>/dev/null)
+
+        echo "{"
+        echo "  \"kernel\": \"$kernel_ver\","
+        echo "  \"ip_forward\": $ip_fwd,"
+        echo "  \"ipv6_forward\": $ipv6_fwd,"
+        echo "  \"nat_active\": $nat_active,"
+        echo "  \"dun_bypass\": $dun_active,"
+        echo "  \"tcp_congestion\": \"$tcp_cong\","
+        echo "  \"tcp_available\": \"$tcp_avail\","
+        echo "  \"cpu_governor\": \"$cpu_gov\","
+        echo "  \"cpu_freq_little\": $cpu_cur_freq,"
+        echo "  \"cpu_freq_big\": $cpu_big_freq,"
+        echo "  \"soc_temp\": $soc_temp_c,"
+        echo "  \"swappiness\": $swappiness,"
+        echo "  \"dirty_ratio\": $dirty_ratio,"
+        echo "  \"zram_algo\": \"$zram_algo\","
+        echo "  \"zram_size\": $zram_size,"
+        echo "  \"adb_wifi\": $adb_active,"
+        echo "  \"network_type\": \"$net_type\","
+        echo "  \"carrier\": \"$sim_op\","
+        echo "  \"interfaces\": \"$ifaces\""
+        echo "}"
+        ;;
+
+    set_ip_forward)
+        val="$1"
+        if [ "$val" = "1" ]; then
+            sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
+            sysctl -w net.ipv6.conf.all.forwarding=1 >/dev/null 2>&1
+            echo '{"status": "ok", "message": "IP forwarding enabled"}'
+        else
+            sysctl -w net.ipv4.ip_forward=0 >/dev/null 2>&1
+            sysctl -w net.ipv6.conf.all.forwarding=0 >/dev/null 2>&1
+            echo '{"status": "ok", "message": "IP forwarding disabled"}'
+        fi
+        ;;
+
+    set_nat)
+        val="$1"
+        if [ "$val" = "1" ]; then
+            iptables -t nat -A POSTROUTING -o rmnet+ -j MASQUERADE 2>/dev/null
+            iptables -t nat -A POSTROUTING -o eth+ -j MASQUERADE 2>/dev/null
+            iptables -t nat -A POSTROUTING -o wlan+ -j MASQUERADE 2>/dev/null
+            iptables -A FORWARD -j ACCEPT 2>/dev/null
+            echo '{"status": "ok", "message": "NAT masquerading enabled across cellular & ethernet"}'
+        else
+            iptables -t nat -D POSTROUTING -o rmnet+ -j MASQUERADE 2>/dev/null
+            iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE 2>/dev/null
+            iptables -t nat -D POSTROUTING -o wlan+ -j MASQUERADE 2>/dev/null
+            echo '{"status": "ok", "message": "NAT masquerading removed"}'
+        fi
+        ;;
+
+    set_hotspot_bypass)
+        val="$1"
+        if [ "$val" = "1" ]; then
+            settings put global tether_dun_required 0
+            settings put global tether_entitlement_check_state 0
+            echo '{"status": "ok", "message": "Carrier hotspot DUN throttle bypass enabled"}'
+        else
+            settings put global tether_dun_required 1
+            settings put global tether_entitlement_check_state 1
+            echo '{"status": "ok", "message": "Carrier hotspot restrictions restored"}'
+        fi
+        ;;
+
+    set_rps)
+        val="$1"
+        if [ "$val" = "1" ]; then
+            for rps in /sys/class/net/*/queues/rx-*/rps_cpus; do
+                [ -f "$rps" ] && echo "ff" > "$rps" 2>/dev/null
+            done
+            echo '{"status": "ok", "message": "RPS multi-core packet steering enabled (8 CPU cores)"}'
+        else
+            for rps in /sys/class/net/*/queues/rx-*/rps_cpus; do
+                [ -f "$rps" ] && echo "0" > "$rps" 2>/dev/null
+            done
+            echo '{"status": "ok", "message": "RPS reverted to default single-core"}'
+        fi
+        ;;
+
+    set_tcp_cong)
+        cong="$1"
+        if [ -n "$cong" ]; then
+            sysctl -w net.ipv4.tcp_congestion_control="$cong" >/dev/null 2>&1
+            echo "{\"status\": \"ok\", \"message\": \"TCP congestion control set to $cong\"}"
+        fi
+        ;;
+
+    set_tcp_buffers)
+        val="$1"
+        if [ "$val" = "1" ]; then
+            sysctl -w net.core.rmem_max=16777216 >/dev/null 2>&1
+            sysctl -w net.core.wmem_max=16777216 >/dev/null 2>&1
+            sysctl -w net.ipv4.tcp_rmem="4096 87380 16777216" >/dev/null 2>&1
+            sysctl -w net.ipv4.tcp_wmem="4096 65536 16777216" >/dev/null 2>&1
+            echo '{"status": "ok", "message": "TCP Gigabit buffers boosted to 16MB"}'
+        else
+            orig_r=$(cat "$STATE_DIR/orig_rmem_max" 2>/dev/null || echo 8388608)
+            orig_w=$(cat "$STATE_DIR/orig_wmem_max" 2>/dev/null || echo 8388608)
+            sysctl -w net.core.rmem_max="$orig_r" >/dev/null 2>&1
+            sysctl -w net.core.wmem_max="$orig_w" >/dev/null 2>&1
+            echo '{"status": "ok", "message": "TCP buffers reverted to stock values"}'
+        fi
+        ;;
+
+    set_cpu_gov)
+        gov="$1"
+        if [ -n "$gov" ]; then
+            for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+                [ -f "$g" ] && echo "$gov" > "$g" 2>/dev/null
+            done
+            echo "{\"status\": \"ok\", \"message\": \"CPU governor set to $gov on all 8 cores\"}"
+        fi
+        ;;
+
+    set_swappiness)
+        val="$1"
+        if [ -n "$val" ]; then
+            sysctl -w vm.swappiness="$val" >/dev/null 2>&1
+            echo "{\"status\": \"ok\", \"message\": \"VM swappiness set to $val\"}"
+        fi
+        ;;
+
+    set_dirty_ratio)
+        val="$1"
+        if [ "$val" = "tuned" ]; then
+            sysctl -w vm.dirty_ratio=20 >/dev/null 2>&1
+            sysctl -w vm.dirty_background_ratio=10 >/dev/null 2>&1
+            echo '{"status": "ok", "message": "VM dirty ratio tuned to 20/10 (prevents I/O stutter)"}'
+        else
+            sysctl -w vm.dirty_ratio=0 >/dev/null 2>&1
+            sysctl -w vm.dirty_background_ratio=0 >/dev/null 2>&1
+            echo '{"status": "ok", "message": "VM dirty ratio reverted to factory defaults"}'
+        fi
+        ;;
+
+    set_adb_wifi)
+        val="$1"
+        if [ "$val" = "1" ]; then
+            setprop service.adb.tcp.port 5555
+            stop adbd 2>/dev/null
+            start adbd 2>/dev/null
+            echo '{"status": "ok", "message": "Wireless ADB active on port 5555"}'
+        else
+            setprop service.adb.tcp.port -1
+            stop adbd 2>/dev/null
+            start adbd 2>/dev/null
+            echo '{"status": "ok", "message": "Wireless ADB disabled"}'
+        fi
+        ;;
+
+    send_at)
+        cmd="$1"
+        port="/dev/ttyC_AT"
+        if [ ! -c "$port" ]; then
+            port="/dev/ttyC0"
+        fi
+        if [ -c "$port" ]; then
+            res=$(/system/bin/sh -c "echo '$cmd' > $port & cat < $port" 2>/dev/null | head -n 10 | tr '\r\n' ' ')
+            echo "{\"status\": \"ok\", \"response\": \"$res\"}"
+        else
+            echo "{\"status\": \"error\", \"message\": \"Modem AT port not found\"}"
+        fi
+        ;;
+
+    revert_all)
+        # Restore all original factory defaults
+        [ -f "$STATE_DIR/orig_ip_forward" ] && sysctl -w net.ipv4.ip_forward=$(cat "$STATE_DIR/orig_ip_forward") >/dev/null 2>&1
+        [ -f "$STATE_DIR/orig_ipv6_forward" ] && sysctl -w net.ipv6.conf.all.forwarding=$(cat "$STATE_DIR/orig_ipv6_forward") >/dev/null 2>&1
+        [ -f "$STATE_DIR/orig_tcp_cong" ] && sysctl -w net.ipv4.tcp_congestion_control=$(cat "$STATE_DIR/orig_tcp_cong") >/dev/null 2>&1
+        [ -f "$STATE_DIR/orig_swappiness" ] && sysctl -w vm.swappiness=$(cat "$STATE_DIR/orig_swappiness") >/dev/null 2>&1
+        [ -f "$STATE_DIR/orig_dirty_ratio" ] && sysctl -w vm.dirty_ratio=$(cat "$STATE_DIR/orig_dirty_ratio") >/dev/null 2>&1
+        [ -f "$STATE_DIR/orig_dirty_bg_ratio" ] && sysctl -w vm.dirty_background_ratio=$(cat "$STATE_DIR/orig_dirty_bg_ratio") >/dev/null 2>&1
+        
+        orig_gov=$(cat "$STATE_DIR/orig_cpu_gov" 2>/dev/null || echo schedutil)
+        for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            [ -f "$g" ] && echo "$orig_gov" > "$g" 2>/dev/null
+        done
+        
+        # Remove custom NAT rules
+        iptables -t nat -D POSTROUTING -o rmnet+ -j MASQUERADE 2>/dev/null
+        iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE 2>/dev/null
+        iptables -t nat -D POSTROUTING -o wlan+ -j MASQUERADE 2>/dev/null
+        
+        # Revert RPS
+        for rps in /sys/class/net/*/queues/rx-*/rps_cpus; do
+            [ -f "$rps" ] && echo "0" > "$rps" 2>/dev/null
+        done
+        
+        # Revert DUN bypass
+        orig_dun=$(cat "$STATE_DIR/orig_dun_required" 2>/dev/null || echo 1)
+        settings put global tether_dun_required "$orig_dun" 2>/dev/null
+        
+        echo '{"status": "ok", "message": "All kernel, network, CPU and memory parameters successfully reverted to factory defaults"}'
+        ;;
+
+    *)
+        echo "{\"status\": \"error\", \"message\": \"Unknown action $action\"}"
+        ;;
+esac

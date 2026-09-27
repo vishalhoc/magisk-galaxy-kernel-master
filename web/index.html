@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxy Kernel Master & Router Control</title>
+    <style>
+        :root {
+            --bg: #0b0f19;
+            --surface: #131b2e;
+            --surface-hover: #1a253e;
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.4);
+            --accent: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --border: #1e293b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 1.5rem; line-height: 1.5; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        .title-box h1 { font-size: 1.6rem; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+        .badge { background: #1e293b; color: #60a5fa; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid #3b82f6; }
+        .badge.active { background: #064e3b; color: #34d399; border-color: #10b981; }
+        .badge.danger { background: #7f1d1d; color: #f87171; border-color: #ef4444; }
+        .subtitle { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.2rem; margin-bottom: 1.5rem; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { border-color: #334155; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-weight: 600; font-size: 1.05rem; }
+        .stat-row { display: flex; justify-content: space-between; padding: 0.45rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: var(--text-dim); }
+        .stat-val { font-weight: 600; font-family: monospace; }
+        .toggle-group { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .toggle-group:last-child { border-bottom: none; }
+        .toggle-desc { font-size: 0.8rem; color: var(--text-dim); }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        select, input[type="text"] { background: #0b0f19; border: 1px solid var(--border); color: #fff; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.85rem; outline: none; }
+        select:focus, input[type="text"]:focus { border-color: var(--primary); }
+        .btn { background: var(--primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: background 0.2s; }
+        .btn:hover { background: #2563eb; }
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-outline:hover { background: var(--surface-hover); }
+        .terminal { background: #05070c; border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; font-family: monospace; font-size: 0.8rem; height: 120px; overflow-y: auto; color: #38bdf8; margin-top: 0.5rem; white-space: pre-wrap; }
+        .actions-bar { display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1.5rem; flex-wrap: wrap; }
+        #toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff; border: 1px solid var(--primary); padding: 0.8rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: none; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-box">
+                <h1>⚡ Galaxy Kernel Master <span class="badge" id="kernel-badge">MT6853</span></h1>
+                <div class="subtitle">Samsung SM-M326B Router & Kernel Control Panel</div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button class="btn btn-outline" onclick="loadStatus()">🔄 Refresh</button>
+                <button class="btn btn-danger" onclick="revertAll()">⚠️ Revert All to Defaults</button>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- System & Thermal Status -->
+            <div class="card">
+                <div class="card-header">
+                    <span>📱 Hardware Telemetry</span>
+                    <span class="badge" id="temp-badge">-- °C</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Kernel</span>
+                    <span class="stat-val" id="val-kernel">Loading...</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">CPU Governor</span>
+                    <span class="stat-val" id="val-cpugov">--</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Little Core Freq</span>
+                    <span class="stat-val" id="val-cpu0">-- MHz</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Big Core Freq</span>
+                    <span class="stat-val" id="val-cpu6">-- MHz</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">ZRAM Algorithm</span>
+                    <span class="stat-val" id="val-zram">--</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Cellular Radio</span>
+                    <span class="stat-val" id="val-network">--</span>
+                </div>
+            </div>
+
+            <!-- Router Engine -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🌐 Router & Tethering Engine</span>
+                    <span class="badge active" id="router-badge">ONLINE</span>
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600;">Kernel IP Forwarding</div>
+                        <div class="toggle-desc">Forward packets between interfaces</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-ipfwd" onchange="toggleIpForward(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600;">Inter-Interface NAT</div>
+                        <div class="toggle-desc">Masquerade over rmnet / eth / wlan</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-nat" onchange="toggleNat(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600;">Carrier Hotspot DUN Bypass</div>
+                        <div class="toggle-desc">Bypass carrier hotspot throttling</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-dun" onchange="toggleDun(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600;">Multi-Core RPS Steering</div>
+                        <div class="toggle-desc">Distribute routing IRQs to 8 CPU cores</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-rps" onchange="toggleRps(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Network & TCP Acceleration -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🚀 TCP & Buffer Acceleration</span>
+                </div>
+                <div class="stat-row" style="align-items: center;">
+                    <span class="stat-label">TCP Congestion Algorithm</span>
+                    <select id="sel-tcpcong" onchange="changeTcpCong(this.value)">
+                        <option value="bic">BIC</option>
+                        <option value="cubic">CUBIC</option>
+                        <option value="reno">RENO</option>
+                    </select>
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600;">Gigabit 16MB Socket Buffers</div>
+                        <div class="toggle-desc">rmem_max & wmem_max boost for 5G</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-tcpbufs" onchange="toggleTcpBuffers(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600;">Wireless ADB (Port 5555)</div>
+                        <div class="toggle-desc">Debug wirelessly over LAN</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-adbwifi" onchange="toggleAdbWifi(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- CPU & RAM Tuning -->
+            <div class="card">
+                <div class="card-header">
+                    <span>⚙️ CPU & Memory Optimization</span>
+                </div>
+                <div class="stat-row" style="align-items: center;">
+                    <span class="stat-label">CPU Scaling Governor</span>
+                    <select id="sel-cpugov" onchange="changeCpuGov(this.value)">
+                        <option value="schedutil">Schedutil (Balanced)</option>
+                        <option value="performance">Performance (2.0 GHz Max)</option>
+                        <option value="powersave">Powersave (Low Power)</option>
+                    </select>
+                </div>
+                <div class="stat-row" style="align-items: center;">
+                    <span class="stat-label">VM Swappiness</span>
+                    <select id="sel-swappiness" onchange="changeSwappiness(this.value)">
+                        <option value="160">160 (Aggressive ZRAM)</option>
+                        <option value="60">60 (Balanced Linux Default)</option>
+                        <option value="10">10 (Low Swapping / High Perf)</option>
+                    </select>
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600;">VM Dirty Ratio Optimization</div>
+                        <div class="toggle-desc">Set 20/10 to eliminate I/O stutter</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chk-dirty" onchange="toggleDirty(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modem AT Terminal -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <span>📡 5G Modem AT Console (/dev/ttyC_AT)</span>
+                <span class="badge" id="carrier-badge">Jio 5G</span>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                <button class="btn btn-outline" onclick="sendAt('AT+ECENG=3')">Engineering Mode (AT+ECENG=3)</button>
+                <button class="btn btn-outline" onclick="sendAt('AT+EPBSE?')">Get Bands (AT+EPBSE?)</button>
+                <button class="btn btn-outline" onclick="sendAt('AT+CSQ')">Signal Quality (AT+CSQ)</button>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="text" id="txt-at" placeholder="Enter custom AT command (e.g. AT+ECENG=3)" style="flex: 1;">
+                <button class="btn" onclick="sendCustomAt()">Send AT</button>
+            </div>
+            <div class="terminal" id="term-at">Ready. Select a quick query above or send an AT command.</div>
+        </div>
+    </div>
+
+    <div id="toast">Settings updated</div>
+
+    <script>
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3000);
+        }
+
+        async function api(action, val = '') {
+            try {
+                const res = await fetch(`/cgi-bin/api.cgi?action=${action}&val=${encodeURIComponent(val)}`);
+                return await res.json();
+            } catch (e) {
+                console.error(e);
+                return { status: 'error', message: e.toString() };
+            }
+        }
+
+        async function loadStatus() {
+            const data = await api('status');
+            if (data && data.kernel) {
+                document.getElementById('val-kernel').innerText = data.kernel;
+                document.getElementById('val-cpugov').innerText = data.cpu_governor;
+                document.getElementById('val-cpu0').innerText = Math.round(data.cpu_freq_little / 1000) + ' MHz';
+                document.getElementById('val-cpu6').innerText = Math.round(data.cpu_freq_big / 1000) + ' MHz';
+                document.getElementById('val-zram').innerText = data.zram_algo.replace('[', '').replace(']', '');
+                document.getElementById('val-network').innerText = `${data.carrier} (${data.network_type})`;
+                document.getElementById('temp-badge').innerText = `${data.soc_temp} °C`;
+                document.getElementById('carrier-badge').innerText = data.carrier;
+
+                // Checkboxes
+                document.getElementById('chk-ipfwd').checked = (data.ip_forward === 1);
+                document.getElementById('chk-nat').checked = (data.nat_active === 1);
+                document.getElementById('chk-dun').checked = (data.dun_bypass === 1);
+                document.getElementById('chk-adbwifi').checked = (data.adb_wifi === 1);
+                document.getElementById('chk-dirty').checked = (data.dirty_ratio > 0);
+
+                // Selects
+                document.getElementById('sel-tcpcong').value = data.tcp_congestion;
+                document.getElementById('sel-cpugov').value = data.cpu_governor;
+                if (data.swappiness <= 20) document.getElementById('sel-swappiness').value = '10';
+                else if (data.swappiness <= 80) document.getElementById('sel-swappiness').value = '60';
+                else document.getElementById('sel-swappiness').value = '160';
+            }
+        }
+
+        async function toggleIpForward(val) {
+            const res = await api('set_ip_forward', val ? '1' : '0');
+            showToast(res.message);
+        }
+
+        async function toggleNat(val) {
+            const res = await api('set_nat', val ? '1' : '0');
+            showToast(res.message);
+        }
+
+        async function toggleDun(val) {
+            const res = await api('set_hotspot_bypass', val ? '1' : '0');
+            showToast(res.message);
+        }
+
+        async function toggleRps(val) {
+            const res = await api('set_rps', val ? '1' : '0');
+            showToast(res.message);
+        }
+
+        async function toggleTcpBuffers(val) {
+            const res = await api('set_tcp_buffers', val ? '1' : '0');
+            showToast(res.message);
+        }
+
+        async function toggleAdbWifi(val) {
+            const res = await api('set_adb_wifi', val ? '1' : '0');
+            showToast(res.message);
+        }
+
+        async function toggleDirty(val) {
+            const res = await api('set_dirty_ratio', val ? 'tuned' : 'default');
+            showToast(res.message);
+        }
+
+        async function changeTcpCong(val) {
+            const res = await api('set_tcp_cong', val);
+            showToast(res.message);
+        }
+
+        async function changeCpuGov(val) {
+            const res = await api('set_cpu_gov', val);
+            showToast(res.message);
+            loadStatus();
+        }
+
+        async function changeSwappiness(val) {
+            const res = await api('set_swappiness', val);
+            showToast(res.message);
+        }
+
+        async function sendAt(cmd) {
+            document.getElementById('txt-at').value = cmd;
+            const term = document.getElementById('term-at');
+            term.innerText = `> ${cmd}\nExecuting...`;
+            const res = await api('send_at', cmd);
+            term.innerText = `> ${cmd}\n${res.response || res.message}`;
+        }
+
+        async function sendCustomAt() {
+            const cmd = document.getElementById('txt-at').value.trim();
+            if (cmd) sendAt(cmd);
+        }
+
+        async function revertAll() {
+            if (!confirm('Revert all kernel parameters, routing rules, and CPU governors to factory defaults?')) return;
+            const res = await api('revert_all');
+            showToast(res.message);
+            loadStatus();
+        }
+
+        window.onload = loadStatus;
+        setInterval(loadStatus, 5000);
+    </script>
+</body>
+</html>
