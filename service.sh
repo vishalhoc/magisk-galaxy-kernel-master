@@ -18,8 +18,9 @@ chmod 755 /data/adb/kernel_master 2>/dev/null
 # Save factory defaults
 /data/adb/kernel_master status >/dev/null 2>&1
 
-# Kill any existing instance on port 8090
-pkill -f "httpd -p 8090" 2>/dev/null
+# Kill any existing or stale instance on port 8090
+pkill -9 -f "8090" 2>/dev/null
+sleep 1
 
 # Start Web Server on port 8090 using Magisk Busybox
 BUSYBOX="/data/adb/magisk/busybox"
