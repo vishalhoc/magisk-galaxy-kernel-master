@@ -3,255 +3,975 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galaxy Kernel Master & Router Control</title>
+    <title>Galaxy Kernel Master & Router Control Panel</title>
     <style>
         :root {
-            --bg: #0b0f19;
-            --surface: #131b2e;
-            --surface-hover: #1a253e;
+            --bg: #090d16;
+            --surface: #111827;
+            --surface-hover: #1f293d;
+            --surface-card: #151f33;
             --primary: #3b82f6;
-            --primary-glow: rgba(59, 130, 246, 0.4);
+            --primary-glow: rgba(59, 130, 246, 0.35);
             --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.35);
             --warning: #f59e0b;
             --danger: #ef4444;
+            --purple: #8b5cf6;
+            --cyan: #06b6d4;
             --text: #f8fafc;
             --text-dim: #94a3b8;
             --border: #1e293b;
+            --border-light: #334155;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: var(--bg); color: var(--text); padding: 1.5rem; line-height: 1.5; }
-        .container { max-width: 1100px; margin: 0 auto; }
-        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
-        .title-box h1 { font-size: 1.6rem; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
-        .badge { background: #1e293b; color: #60a5fa; font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid #3b82f6; }
-        .badge.active { background: #064e3b; color: #34d399; border-color: #10b981; }
-        .badge.danger { background: #7f1d1d; color: #f87171; border-color: #ef4444; }
-        .subtitle { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.2rem; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.2rem; margin-bottom: 1.5rem; }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; transition: transform 0.2s, box-shadow 0.2s; }
-        .card:hover { border-color: #334155; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-weight: 600; font-size: 1.05rem; }
-        .stat-row { display: flex; justify-content: space-between; padding: 0.45rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
-        .stat-row:last-child { border-bottom: none; }
-        .stat-label { color: var(--text-dim); }
-        .stat-val { font-weight: 600; font-family: monospace; }
-        .toggle-group { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .toggle-group:last-child { border-bottom: none; }
-        .toggle-desc { font-size: 0.8rem; color: var(--text-dim); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 1.25rem; line-height: 1.5; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1.2rem; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 1rem; }
+        .brand h1 { font-size: 1.6rem; color: #fff; font-weight: 800; display: flex; align-items: center; gap: 0.6rem; }
+        .author-tag { font-size: 0.85rem; color: #60a5fa; font-weight: 600; margin-left: 0.3rem; }
+        .subtitle { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.25rem; }
+        .header-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+
+        /* Status Pills Bar */
+        .telemetry-bar { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+        .pill { background: var(--surface); border: 1px solid var(--border); padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; font-family: monospace; }
+        .pill-val { font-weight: 700; color: #fff; }
+        .pill-temp { color: var(--warning); }
+        .pill-soc { color: #60a5fa; }
+        .pill-batt { color: var(--accent); }
+        .pill-modem { color: var(--purple); }
+
+        /* Navigation Tabs */
+        .nav-tabs { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.6rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
+        .tab-btn { background: transparent; border: 1px solid transparent; color: var(--text-dim); padding: 0.55rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.88rem; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem; }
+        .tab-btn:hover { background: var(--surface); color: #fff; }
+        .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 0 12px var(--primary-glow); }
+
+        /* Tab Content */
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Grid & Cards */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.2rem; margin-bottom: 1.5rem; }
+        .card { background: var(--surface-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; transition: border-color 0.2s; position: relative; }
+        .card:hover { border-color: var(--border-light); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight: 700; font-size: 1.05rem; }
+        .card-badge { font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 999px; font-weight: 600; }
+        .badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+        .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .badge-yellow { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+        .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+
+        /* Tunable Item & Explanation */
+        .tunable-item { margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .tunable-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .tunable-control { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.45rem; }
+        .tunable-title { font-weight: 600; font-size: 0.95rem; color: #fff; display: flex; align-items: center; gap: 0.4rem; }
+        .tunable-desc { font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; margin-bottom: 0.45rem; }
+        
+        /* Explanation Box */
+        .explain-box { background: rgba(11, 15, 25, 0.7); border: 1px solid #1e293b; border-left: 3px solid var(--primary); border-radius: 6px; padding: 0.6rem 0.8rem; font-size: 0.78rem; color: #cbd5e1; line-height: 1.45; margin-top: 0.5rem; }
+        .explain-box code { color: #38bdf8; font-family: monospace; font-size: 0.75rem; background: rgba(56, 189, 248, 0.1); padding: 0.1rem 0.3rem; border-radius: 4px; }
+        .explain-meta { display: flex; gap: 0.8rem; margin-top: 0.35rem; font-size: 0.73rem; color: var(--text-dim); flex-wrap: wrap; }
+        .explain-meta span { display: flex; align-items: center; gap: 0.25rem; }
+
+        /* Switches & Controls */
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .3s; border-radius: 24px; }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .25s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .25s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
         input:checked + .slider:before { transform: translateX(20px); }
-        select, input[type="text"] { background: #0b0f19; border: 1px solid var(--border); color: #fff; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.85rem; outline: none; }
-        select:focus, input[type="text"]:focus { border-color: var(--primary); }
-        .btn { background: var(--primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: background 0.2s; }
+
+        select, input[type="text"], input[type="number"] { background: #0b0f19; border: 1px solid var(--border-light); color: #fff; padding: 0.45rem 0.7rem; border-radius: 6px; font-size: 0.85rem; outline: none; transition: border-color 0.2s; }
+        select:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: var(--primary); }
+        
+        .btn { background: var(--primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
         .btn:hover { background: #2563eb; }
+        .btn-success { background: var(--accent); }
+        .btn-success:hover { background: #059669; }
         .btn-danger { background: var(--danger); }
         .btn-danger:hover { background: #dc2626; }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-        .btn-outline:hover { background: var(--surface-hover); }
-        .terminal { background: #05070c; border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; font-family: monospace; font-size: 0.8rem; height: 120px; overflow-y: auto; color: #38bdf8; margin-top: 0.5rem; white-space: pre-wrap; }
-        .actions-bar { display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1.5rem; flex-wrap: wrap; }
-        #toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff; border: 1px solid var(--primary); padding: 0.8rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); display: none; z-index: 1000; }
+        .btn-warning { background: var(--warning); color: #111; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-light); color: var(--text); }
+        .btn-outline:hover { background: var(--surface-hover); border-color: #64748b; }
+        .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+
+        /* Terminal */
+        .terminal { background: #05070c; border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem; font-family: monospace; font-size: 0.82rem; height: 180px; overflow-y: auto; color: #38bdf8; white-space: pre-wrap; line-height: 1.4; }
+
+        /* Preset Card */
+        .preset-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s; }
+        .preset-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+        .preset-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 0.35rem; color: #fff; }
+        .preset-desc { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 0.9rem; line-height: 1.4; }
+
+        /* Toast */
+        #toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; border: 1px solid var(--primary); padding: 0.85rem 1.4rem; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; z-index: 9999; font-size: 0.88rem; font-weight: 500; }
+        
+        /* Progress Bar */
+        .progress-bar-bg { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; margin-top: 0.3rem; }
+        .progress-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <header>
-            <div class="title-box">
-                <h1>⚡ Galaxy Kernel Master <span class="badge" id="kernel-badge">MT6853</span></h1>
-                <div class="subtitle">Samsung SM-M326B Router & Kernel Control Panel</div>
+            <div class="brand">
+                <h1>⚡ Galaxy Kernel Master <span class="author-tag">by hoc</span></h1>
+                <div class="subtitle">Samsung SM-M326B (MediaTek Dimensity 720 / MT6853) Complete Kernel & 5G Router Engine</div>
             </div>
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <button class="btn btn-outline" onclick="loadStatus()">🔄 Refresh</button>
-                <button class="btn btn-danger" onclick="revertAll()">⚠️ Revert All to Defaults</button>
+            <div class="header-actions">
+                <button class="btn btn-outline" id="btn-pause-refresh" onclick="toggleAutoRefresh()">⏸️ Pause Polling</button>
+                <button class="btn btn-outline" onclick="loadStatus(true)">🔄 Refresh</button>
+                <button class="btn btn-danger" onclick="revertAll()">⚠️ Factory Defaults</button>
             </div>
         </header>
 
-        <div class="grid">
-            <!-- System & Thermal Status -->
-            <div class="card">
-                <div class="card-header">
-                    <span>📱 Hardware Telemetry</span>
-                    <span class="badge" id="temp-badge">-- °C</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Kernel</span>
-                    <span class="stat-val" id="val-kernel">Loading...</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">CPU Governor</span>
-                    <span class="stat-val" id="val-cpugov">--</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Little Core Freq</span>
-                    <span class="stat-val" id="val-cpu0">-- MHz</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Big Core Freq</span>
-                    <span class="stat-val" id="val-cpu6">-- MHz</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">ZRAM Algorithm</span>
-                    <span class="stat-val" id="val-zram">--</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Cellular Radio</span>
-                    <span class="stat-val" id="val-network">--</span>
-                </div>
-            </div>
+        <!-- Live Telemetry Pill Bar -->
+        <div class="telemetry-bar">
+            <div class="pill"><span>Kernel:</span> <span class="pill-val" id="pill-kernel">4.14.186</span></div>
+            <div class="pill"><span>SoC:</span> <span class="pill-val pill-soc" id="pill-temp-soc">-- °C</span></div>
+            <div class="pill"><span>Battery:</span> <span class="pill-val pill-batt" id="pill-temp-batt">-- °C</span></div>
+            <div class="pill"><span>5G Modem:</span> <span class="pill-val pill-modem" id="pill-temp-modem">-- °C</span></div>
+            <div class="pill"><span>Wi-Fi:</span> <span class="pill-val pill-soc" id="pill-temp-wifi">-- °C</span></div>
+            <div class="pill"><span>Charge Level:</span> <span class="pill-val pill-batt" id="pill-batt-level">--%</span></div>
+            <div class="pill"><span>Current:</span> <span class="pill-val" id="pill-batt-current">-- mA</span></div>
+            <div class="pill"><span>Network:</span> <span class="pill-val" id="pill-network">--</span></div>
+        </div>
 
-            <!-- Router Engine -->
-            <div class="card">
-                <div class="card-header">
-                    <span>🌐 Router & Tethering Engine</span>
-                    <span class="badge active" id="router-badge">ONLINE</span>
-                </div>
-                <div class="toggle-group">
-                    <div>
-                        <div style="font-weight: 600;">Kernel IP Forwarding</div>
-                        <div class="toggle-desc">Forward packets between interfaces</div>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-ipfwd" onchange="toggleIpForward(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="toggle-group">
-                    <div>
-                        <div style="font-weight: 600;">Inter-Interface NAT</div>
-                        <div class="toggle-desc">Masquerade over rmnet / eth / wlan</div>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-nat" onchange="toggleNat(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="toggle-group">
-                    <div>
-                        <div style="font-weight: 600;">Carrier Hotspot DUN Bypass</div>
-                        <div class="toggle-desc">Bypass carrier hotspot throttling</div>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-dun" onchange="toggleDun(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="toggle-group">
-                    <div>
-                        <div style="font-weight: 600;">Multi-Core RPS Steering</div>
-                        <div class="toggle-desc">Distribute routing IRQs to 8 CPU cores</div>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-rps" onchange="toggleRps(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab-btn" onclick="switchTab('cpu')">⚡ CPU & DVFS</button>
+            <button class="tab-btn" onclick="switchTab('ppm')">🔥 MediaTek PPM</button>
+            <button class="tab-btn" onclick="switchTab('memory')">🧠 Memory & ZRAM</button>
+            <button class="tab-btn" onclick="switchTab('storage')">💾 Storage & I/O</button>
+            <button class="tab-btn" onclick="switchTab('scheduler')">⏱️ Kernel Scheduler</button>
+            <button class="tab-btn" onclick="switchTab('network')">🌐 Network & 5G Router</button>
+            <button class="tab-btn" onclick="switchTab('battery')">🔋 Battery & Hardware</button>
+            <button class="tab-btn" onclick="switchTab('modem')">📡 5G Modem AT Console</button>
+            <button class="tab-btn" onclick="switchTab('presets')">🎯 1-Click Profiles</button>
+        </div>
 
-            <!-- Network & TCP Acceleration -->
-            <div class="card">
-                <div class="card-header">
-                    <span>🚀 TCP & Buffer Acceleration</span>
-                </div>
-                <div class="stat-row" style="align-items: center;">
-                    <span class="stat-label">TCP Congestion Algorithm</span>
-                    <select id="sel-tcpcong" onchange="changeTcpCong(this.value)">
-                        <option value="bic">BIC</option>
-                        <option value="cubic">CUBIC</option>
-                        <option value="reno">RENO</option>
-                    </select>
-                </div>
-                <div class="toggle-group">
-                    <div>
-                        <div style="font-weight: 600;">Gigabit 16MB Socket Buffers</div>
-                        <div class="toggle-desc">rmem_max & wmem_max boost for 5G</div>
+        <!-- TAB 1: DASHBOARD -->
+        <div class="tab-pane active" id="pane-dashboard">
+            <div class="grid">
+                <!-- System & Radio Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>📱 System & Baseband Status</span>
+                        <span class="card-badge badge-blue" id="dash-carrier">Jio 5G</span>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-tcpbufs" onchange="toggleTcpBuffers(this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="toggle-group">
-                    <div>
-                        <div style="font-weight: 600;">Wireless ADB (Port 5555)</div>
-                        <div class="toggle-desc">Debug wirelessly over LAN</div>
+                    <div style="font-size: 0.88rem; display: flex; flex-direction: column; gap: 0.55rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Device Model</span>
+                            <span style="font-weight: 600;">Samsung Galaxy M32 5G (SM-M326B)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">SoC Processor</span>
+                            <span style="font-weight: 600;">MediaTek MT6853 (Dimensity 720) 8-Core</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Kernel Architecture</span>
+                            <span style="font-weight: 600;" id="dash-kernel">Linux 4.14.186 AArch64</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Radio RAT / State</span>
+                            <span style="font-weight: 600;" id="dash-network-type">NR_SA / Active</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Wireless ADB (Port 5555)</span>
+                            <span style="font-weight: 600;" id="dash-adb-status">Online</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Active Network Interfaces</span>
+                            <span style="font-weight: 600; font-family: monospace; font-size: 0.78rem;" id="dash-ifaces">rmnet0 ap0</span>
+                        </div>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-adbwifi" onchange="toggleAdbWifi(this.checked)">
-                        <span class="slider"></span>
-                    </label>
                 </div>
-            </div>
 
-            <!-- CPU & RAM Tuning -->
-            <div class="card">
-                <div class="card-header">
-                    <span>⚙️ CPU & Memory Optimization</span>
-                </div>
-                <div class="stat-row" style="align-items: center;">
-                    <span class="stat-label">CPU Scaling Governor</span>
-                    <select id="sel-cpugov" onchange="changeCpuGov(this.value)">
-                        <option value="schedutil">Schedutil (Balanced)</option>
-                        <option value="performance">Performance (2.0 GHz Max)</option>
-                        <option value="powersave">Powersave (Low Power)</option>
-                    </select>
-                </div>
-                <div class="stat-row" style="align-items: center;">
-                    <span class="stat-label">VM Swappiness</span>
-                    <select id="sel-swappiness" onchange="changeSwappiness(this.value)">
-                        <option value="160">160 (Aggressive ZRAM)</option>
-                        <option value="60">60 (Balanced Linux Default)</option>
-                        <option value="10">10 (Low Swapping / High Perf)</option>
-                    </select>
-                </div>
-                <div class="toggle-group">
-                    <div>
-                        <div style="font-weight: 600;">VM Dirty Ratio Optimization</div>
-                        <div class="toggle-desc">Set 20/10 to eliminate I/O stutter</div>
+                <!-- Live Core Activity -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>⚡ CPU Live Frequency & Clocks</span>
+                        <span class="card-badge badge-green" id="dash-unlock-badge">2.0 GHz UNLOCKED</span>
                     </div>
-                    <label class="switch">
-                        <input type="checkbox" id="chk-dirty" onchange="toggleDirty(this.checked)">
-                        <span class="slider"></span>
-                    </label>
+                    <div style="margin-bottom: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.2rem;">
+                            <span>Cluster 0 (Little Cores 0-5: Cortex-A55)</span>
+                            <span style="font-weight: 700; color: #60a5fa;" id="dash-cpu0-freq">2000 MHz</span>
+                        </div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-cpu0" style="width: 100%;"></div></div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">Governor: <span id="dash-gov0" style="color: #fff;">schedutil</span> | Min: <span id="dash-min0">500</span> MHz / Max: <span id="dash-max0">2000</span> MHz</div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.2rem;">
+                            <span>Cluster 1 (Big Cores 6-7: Cortex-A76)</span>
+                            <span style="font-weight: 700; color: #34d399;" id="dash-cpu6-freq">2000 MHz</span>
+                        </div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-cpu6" style="width: 100%; background: var(--accent);"></div></div>
+                        <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">Governor: <span id="dash-gov6" style="color: #fff;">schedutil</span> | Min: <span id="dash-min6">725</span> MHz / Max: <span id="dash-max6">2000</span> MHz</div>
+                    </div>
+                </div>
+
+                <!-- 5G Router Engine Quick Status -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🌐 5G Router Engine Status</span>
+                        <span class="card-badge badge-green" id="dash-router-badge">ROUTER ACTIVE</span>
+                    </div>
+                    <div style="font-size: 0.88rem; display: flex; flex-direction: column; gap: 0.55rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Kernel IP Packet Forwarding</span>
+                            <span style="font-weight: 600;" id="dash-ipfwd">Enabled (IPv4 + IPv6)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Inter-Interface NAT Masquerade</span>
+                            <span style="font-weight: 600;" id="dash-nat">Active (rmnet, eth, wlan)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Carrier Hotspot DUN Bypass</span>
+                            <span style="font-weight: 600;" id="dash-dun">Active (Throttle Bypassed)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">8-Core RPS Steering</span>
+                            <span style="font-weight: 600;" id="dash-rps">Active (8 Cores)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">TCP Congestion & Buffers</span>
+                            <span style="font-weight: 600;" id="dash-tcp">BIC / Gigabit 16MB</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Modem AT Terminal -->
-        <div class="card" style="margin-bottom: 1.5rem;">
-            <div class="card-header">
-                <span>📡 5G Modem AT Console (/dev/ttyC_AT)</span>
-                <span class="badge" id="carrier-badge">Jio 5G</span>
+        <!-- TAB 2: CPU & DVFS -->
+        <div class="tab-pane" id="pane-cpu">
+            <div class="grid">
+                <!-- Big Core 2.0 GHz Max Unlock -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🚀 Cortex-A76 Big Cores 2.0 GHz Unlock</span>
+                        <span class="card-badge badge-blue">DVFS OVERCLOCK</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Unlock Full 2.0 GHz Peak Clocks</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-unlock2ghz" onchange="toggle2GhzUnlock(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Overrides MediaTek's stock thermal OPP table limitation which permanently restricts the two big Cortex-A76 cores to 1.65 GHz (1650 MHz).</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Stock Samsung firmware enforces an index 6 limit in MediaTek's PPM engine (<code>userlimit_max_cpu_freq</code>). Writing <code>1 -1</code> unlocks all 16 frequency operating points up to the silicon's true maximum of <strong>2,000,000 kHz (2.0 GHz)</strong>.<br>
+                            <strong>Why change it:</strong> Massive boost in single-thread responsiveness, packet encryption/routing throughput, and app launch speeds.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/ppm/policy/userlimit_max_cpu_freq</code></span>
+                                <span>⚡ Recommended: <strong>Enabled (2.0 GHz)</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Governor Controls -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>⚙️ CPU Scaling Governors</span>
+                        <span class="card-badge badge-green">ENERGY AWARE</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Cluster 0 Governor (Little Cores 0-5)</div>
+                            <select id="sel-gov0" onchange="changeCpuGov('0', this.value)">
+                                <option value="schedutil">schedutil (Energy Aware - Dynamic)</option>
+                                <option value="performance">performance (Lock 2.0 GHz Max)</option>
+                                <option value="powersave">powersave (Lock 500 MHz Min)</option>
+                            </select>
+                        </div>
+                        <div class="explain-box">
+                            <strong>schedutil:</strong> Communicates directly with the kernel's Energy-Aware Scheduler (EAS) to pick frequencies instantly based on CFS task utilization.<br>
+                            <strong>performance:</strong> Locks cores to maximum clock constantly. Lowers latency at the cost of high battery drain.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/sys/devices/system/cpu/cpufreq/policy0/scaling_governor</code></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Cluster 1 Governor (Big Cores 6-7)</div>
+                            <select id="sel-gov6" onchange="changeCpuGov('6', this.value)">
+                                <option value="schedutil">schedutil (Energy Aware - Dynamic)</option>
+                                <option value="performance">performance (Lock 2.0 GHz Max)</option>
+                                <option value="powersave">powersave (Lock 725 MHz Min)</option>
+                            </select>
+                        </div>
+                        <div class="explain-box">
+                            Controls how aggressively the two Cortex-A76 Big cores respond to high computational demand and network routing bursts.
+                            <div class="explain-meta">
+                                <span>📁 <code>/sys/devices/system/cpu/cpufreq/policy6/scaling_governor</code></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Frequency Limits -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>📊 Frequency Limits & OPP Steps</span>
+                        <span class="card-badge badge-yellow">ADVANCED</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Cluster 0 Max Frequency Limit</div>
+                            <select id="sel-maxfreq0" onchange="changeCpuFreq('0', 'max', this.value)">
+                                <option value="2000000">2000 MHz (Max)</option>
+                                <option value="1750000">1750 MHz</option>
+                                <option value="1500000">1500 MHz</option>
+                                <option value="1128000">1128 MHz</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Sets the maximum clock ceiling for the Cortex-A55 Little cores.</div>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Cluster 1 Max Frequency Limit</div>
+                            <select id="sel-maxfreq6" onchange="changeCpuFreq('6', 'max', this.value)">
+                                <option value="2000000">2000 MHz (Unlocked Max)</option>
+                                <option value="1650000">1650 MHz (Stock Samsung Cap)</option>
+                                <option value="1418000">1418 MHz</option>
+                                <option value="1129000">1129 MHz</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Sets the maximum clock ceiling for the Cortex-A76 Big cores.</div>
+                    </div>
+                </div>
             </div>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
-                <button class="btn btn-outline" onclick="sendAt('AT+ECENG=3')">Engineering Mode (AT+ECENG=3)</button>
-                <button class="btn btn-outline" onclick="sendAt('AT+EPBSE?')">Get Bands (AT+EPBSE?)</button>
-                <button class="btn btn-outline" onclick="sendAt('AT+CSQ')">Signal Quality (AT+CSQ)</button>
+        </div>
+
+        <!-- TAB 3: MEDIATEK PPM ENGINE -->
+        <div class="tab-pane" id="pane-ppm">
+            <div class="grid">
+                <!-- PPM Master Switch -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🔥 MediaTek PPM Master Switch</span>
+                        <span class="card-badge badge-blue">POWER MANAGEMENT</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">PPM Dynamic Power Engine</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-ppm-enabled" onchange="togglePpmEnabled(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Master enable switch for MediaTek's Processor Power Management driver.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Manages OPP step switching, thermal budgets, and power states across all CPU cores.<br>
+                            <strong>Recommended:</strong> Enabled (1) so cluster policies and turbo boost mechanisms function properly.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/ppm/enabled</code></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PPM System Boost -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>⚡ PPM System Boost (Turbo Mode)</span>
+                        <span class="card-badge badge-green">TURBO ACCELERATION</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Aggressive Turbo Boost (Policy 9)</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-ppm-boost" onchange="togglePpmBoost(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Forces MediaTek's driver to immediately ramp CPU clocks to maximum upon thread activity instead of step-by-step ramping.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Activates <code>PPM_POLICY_SYS_BOOST</code> in the kernel. Eliminates latency spikes when network packets or interactive touch events arrive.<br>
+                            <strong>Recommended:</strong> Enabled for gaming and heavy routing throughput.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/ppm/policy_status [9]</code></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PPM Thermal Throttling Bypass -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🛡️ PPM Thermal Throttle Bypass</span>
+                        <span class="card-badge badge-yellow">SUSTAINED CLOCKS</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Bypass Thermal Downclocking (Policy 4)</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-ppm-thermal" onchange="togglePpmThermalBypass(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Prevents MediaTek's PPM thermal policy from forcefully cutting CPU clocks under sustained workloads.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Disables <code>PPM_POLICY_THERMAL</code> (Policy 4). When active, prevents the device from dropping down to 1.1 GHz during sustained 500+ Mbps downloads.<br>
+                            <strong>Safety Note:</strong> Keep phone in a well-ventilated spot or attached to a heatsink/fan when running continuous stress tests.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/ppm/policy_status [4]</code></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <input type="text" id="txt-at" placeholder="Enter custom AT command (e.g. AT+ECENG=3)" style="flex: 1;">
-                <button class="btn" onclick="sendCustomAt()">Send AT</button>
+        </div>
+
+        <!-- TAB 4: MEMORY & ZRAM -->
+        <div class="tab-pane" id="pane-memory">
+            <div class="grid">
+                <!-- VM Swappiness -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🧠 Virtual Memory Swappiness</span>
+                        <span class="card-badge badge-blue">VM TUNABLE</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">VM Swappiness (0 - 200)</div>
+                            <select id="sel-swappiness" onchange="changeSwappiness(this.value)">
+                                <option value="10">10 (Extreme Performance - Low Swap)</option>
+                                <option value="60">60 (Balanced Linux Default)</option>
+                                <option value="100">100 (Standard Swapping)</option>
+                                <option value="160">160 (Aggressive ZRAM - Stock Android)</option>
+                                <option value="200">200 (Maximum ZRAM Compression)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Controls how aggressively the kernel reclaims anonymous process memory by writing pages into ZRAM swap.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> High swappiness (160) constantly compresses RAM pages into ZRAM to keep more apps open, which consumes CPU decompression cycles. Setting to <strong>10</strong> keeps active processes in fast physical RAM, eliminating UI lag and routing jitter.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/sys/vm/swappiness</code></span>
+                                <span>⚡ Recommended: <strong>10</strong> for Router / Gaming, <strong>60</strong> for Balanced</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VM Dirty Ratios -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>💾 Dirty Ratios & Write Stutter</span>
+                        <span class="card-badge badge-green">I/O SMOOTHNESS</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">VM Dirty Ratio Tuning (20% / 10%)</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-dirty-tuned" onchange="toggleDirtyRatio(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Prevents system-wide UI freezes during heavy file downloads and app updates.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Stock settings often allow dirty pages to accumulate until processes are blocked for synchronous writeouts. Setting <code>dirty_ratio=20</code> and <code>dirty_background_ratio=10</code> enables smooth background flushing to UFS storage before freezes occur.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/sys/vm/dirty_ratio</code> & <code>dirty_background_ratio</code></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VFS Cache Pressure & ZRAM -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🗂️ VFS Cache Pressure & ZRAM Algo</span>
+                        <span class="card-badge badge-purple">RAM EFFICIENCY</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">VFS Cache Pressure</div>
+                            <select id="sel-vfscache" onchange="changeVfsCache(this.value)">
+                                <option value="50">50 (Retain Directory & Inode Caches)</option>
+                                <option value="100">100 (Default Balanced Reclamation)</option>
+                                <option value="150">150 (Aggressive Cache Freeing)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Controls kernel tendency to reclaim directory entries (dentries) and inode cache.</div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">ZRAM Compression Algorithm</div>
+                            <select id="sel-zramalgo" onchange="changeZramAlgo(this.value)">
+                                <option value="lz4">lz4 (Fastest Decompression / Lowest CPU)</option>
+                                <option value="lzo-rle">lzo-rle (Stock Default)</option>
+                                <option value="zstd">zstd (Highest Compression Ratio)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Algorithm used to compress RAM pages inside <code>/dev/block/zram0</code>.</div>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-warning btn-sm" onclick="dropCaches(3)">🧹 Drop Caches (Flush RAM Buffers)</button>
+                        <span style="font-size: 0.78rem; color: var(--text-dim); margin-left: 0.5rem;">Frees clean pagecache, dentries & inodes immediately.</span>
+                    </div>
+                </div>
             </div>
-            <div class="terminal" id="term-at">Ready. Select a quick query above or send an AT command.</div>
+        </div>
+
+        <!-- TAB 5: STORAGE & UFS 2.1 I/O -->
+        <div class="tab-pane" id="pane-storage">
+            <div class="grid">
+                <!-- I/O Schedulers -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>⚡ UFS 2.1 I/O Scheduler</span>
+                        <span class="card-badge badge-blue">STORAGE QUEUE</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">I/O Scheduling Algorithm</div>
+                            <select id="sel-iosched" onchange="changeIoSched(this.value)">
+                                <option value="deadline">deadline (Lowest Latency for Flash Storage)</option>
+                                <option value="noop">noop (Simple FIFO / Low CPU Overhead)</option>
+                                <option value="cfq">cfq (Completely Fair Queuing - Stock Default)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Selects how the Linux block layer schedules read/write operations to the UFS 2.1 storage chip.</div>
+                        <div class="explain-box">
+                            <strong>deadline:</strong> Imposes strict deadlines on I/O requests to guarantee service times, preventing request starvation. Proven best for flash memory.<br>
+                            <strong>noop:</strong> Minimal FIFO queueing with request merging. Ideal when UFS chip controller handles optimization.<br>
+                            <strong>cfq:</strong> Divides bandwidth by process, adding queue overhead.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/sys/block/sd*/queue/scheduler</code></span>
+                                <span>⚡ Recommended: <strong>deadline</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Read-Ahead Cache -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>📖 Storage Read-Ahead Cache</span>
+                        <span class="card-badge badge-green">THROUGHPUT</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Read-Ahead Cache Size</div>
+                            <select id="sel-readahead" onchange="changeReadAhead(this.value)">
+                                <option value="128">128 KB (Stock Default)</option>
+                                <option value="256">256 KB (Balanced)</option>
+                                <option value="512">512 KB (High Performance)</option>
+                                <option value="1024">1024 KB (Large Transfers / Media)</option>
+                                <option value="2048">2048 KB (Extreme Sequential Throughput)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">How much data the kernel pre-reads into RAM ahead of sequential disk reads.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Pre-reads consecutive sectors during sequential access. Boosting from 128KB to <strong>512KB-1024KB</strong> drastically speeds up app launch times, large database queries, and log reads without wasting RAM.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>blockdev --setra & /sys/block/*/queue/read_ahead_kb</code></span>
+                                <span>⚡ Recommended: <strong>512 KB</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 6: EAS KERNEL SCHEDULER -->
+        <div class="tab-pane" id="pane-scheduler">
+            <div class="grid">
+                <!-- Child Runs First -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>👶 sched_child_runs_first</span>
+                        <span class="card-badge badge-blue">APP LAUNCH SPEED</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Child Process Runs First on Fork</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-schedchild" onchange="toggleSchedChild(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Controls whether a newly created child process or the parent process executes first upon <code>fork()</code> / <code>clone()</code>.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> When an app or daemon forks, having the child run first significantly cuts launch latency because the child immediately calls <code>execve()</code>, eliminating unnecessary copy-on-write page faults.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/sys/kernel/sched_child_runs_first</code></span>
+                                <span>⚡ Recommended: <strong>Enabled (1)</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scheduler Latency Target -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>⏱️ Scheduler Target Latency (EAS)</span>
+                        <span class="card-badge badge-green">TASK RESPONSIVENESS</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">sched_latency_ns</div>
+                            <select id="sel-schedlat" onchange="changeSchedLatency(this.value)">
+                                <option value="6000000">6,000,000 ns (6ms - Ultra Responsive / Low Jitter)</option>
+                                <option value="8000000">8,000,000 ns (8ms - Gaming & High Load)</option>
+                                <option value="10000000">10,000,000 ns (10ms - Stock Default)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Period over which all runnable tasks must be scheduled at least once.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Shorter latency periods ensure tasks (including networking threads) get CPU attention much more frequently, lowering routing latency and UI stutter at minor context-switch cost.<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/proc/sys/kernel/sched_latency_ns</code></span>
+                                <span>⚡ Recommended: <strong>6ms</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 7: NETWORK & 5G ROUTER -->
+        <div class="tab-pane" id="pane-network">
+            <div class="grid">
+                <!-- Core Routing Engine -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🌐 Routing & Tethering Engine</span>
+                        <span class="card-badge badge-green">ROUTER MASTER</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Kernel IP Packet Forwarding</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-ipfwd-tab" onchange="toggleIpForward(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Enables kernel IP stack to route packets between interfaces (IPv4 & IPv6).</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Sets <code>net.ipv4.ip_forward=1</code> and <code>net.ipv6.conf.all.forwarding=1</code>. Essential for turning the phone into a dedicated 5G Wi-Fi / USB router.<br>
+                            <div class="explain-meta"><span>📁 <code>/proc/sys/net/ipv4/ip_forward</code></span></div>
+                        </div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Inter-Interface NAT Masquerade</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-nat-tab" onchange="toggleNat(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Translates private hotspot client IPs to carrier cellular WAN IP.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Injects iptables MASQUERADE rules over <code>rmnet+</code>, <code>eth+</code>, and <code>wlan+</code>. Allows all client devices on hotspot/LAN to access 5G internet.<br>
+                        </div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Carrier Hotspot DUN Throttle Bypass</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-dun-tab" onchange="toggleDun(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Bypasses carrier tethering restrictions by routing hotspot traffic via primary phone APN.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Sets <code>tether_dun_required=0</code> and disables entitlement checks. Eliminates speed caps imposed on tethering plans.<br>
+                        </div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Multi-Core RPS Steering (8 Cores)</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-rps-tab" onchange="toggleRps(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Distributes network receive IRQs across all 8 CPU cores.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Sets <code>rps_cpus = ff</code> across network rx queues. Prevents CPU core 0 from bottlenecking at 500+ Mbps throughput.<br>
+                            <div class="explain-meta"><span>📁 <code>/sys/class/net/*/queues/rx-*/rps_cpus</code></span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TCP Congestion & Acceleration -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🚀 TCP Congestion & Gigabit Buffers</span>
+                        <span class="card-badge badge-blue">GIGABIT 5G</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">TCP Congestion Control</div>
+                            <select id="sel-tcpcong-tab" onchange="changeTcpCong(this.value)">
+                                <option value="bic">BIC (Aggressive Mobile Cellular Ramp-Up)</option>
+                                <option value="cubic">CUBIC (Linux Standard High-Bandwidth)</option>
+                                <option value="reno">RENO (Classic Loss-Based)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Algorithm determining data transmission rate based on packet feedback.</div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Gigabit Socket Buffers (16MB / 32MB)</div>
+                            <select id="sel-tcpbufs" onchange="changeTcpBuffers(this.value)">
+                                <option value="default">Stock Buffers (~8MB)</option>
+                                <option value="16mb">Gigabit Buffers (16MB - Recommended for 5G)</option>
+                                <option value="32mb">Ultra 5G Buffers (32MB)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Expands <code>rmem_max</code> and <code>wmem_max</code> socket buffer ceilings.</div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">TCP Fast Open (0-RTT)</div>
+                            <select id="sel-fastopen" onchange="changeFastOpen(this.value)">
+                                <option value="3">3 (Client & Server - Maximum Speed)</option>
+                                <option value="1">1 (Client Only)</option>
+                                <option value="0">0 (Disabled)</option>
+                            </select>
+                        </div>
+                        <div class="tunable-desc">Sends payload data inside the initial SYN packet, eliminating 1 full round trip.</div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">TCP TIME-WAIT Socket Reuse</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-tcptw" onchange="toggleTcpTwReuse(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Allows recycling TIME-WAIT sockets for high-concurrency client connections.</div>
+                    </div>
+
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Disable Slow Start After Idle</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-tcpidle" onchange="toggleTcpSlowStartIdle(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Prevents connections from dropping transmission window size during short idle pauses.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 8: BATTERY & HARDWARE PROTECTION -->
+        <div class="tab-pane" id="pane-battery">
+            <div class="grid">
+                <!-- 24/7 Store Mode / Bypass Charging -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🛡️ Battery Protection & Bypass Charging</span>
+                        <span class="card-badge badge-green" id="batt-store-badge">BYPASS ACTIVE</span>
+                    </div>
+                    <div class="tunable-item">
+                        <div class="tunable-control">
+                            <div class="tunable-title">Battery Store Mode (Bypass Charging)</div>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-storemode" onchange="toggleStoreMode(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="tunable-desc">Essential for 24/7 router operation! Powers the phone from USB cable without overcharging or degrading the battery.</div>
+                        <div class="explain-box">
+                            <strong>What it does:</strong> Writes to <code>/sys/class/power_supply/battery/store_mode</code>. When enabled, the phone bypasses charging current into the lithium cell and runs directly off USB power. Completely eliminates battery swelling, high temperatures, and chemical degradation!<br>
+                            <div class="explain-meta">
+                                <span>📁 <code>/sys/class/power_supply/battery/store_mode</code></span>
+                                <span>⚡ Recommended: <strong>Enabled (1)</strong> for 24/7 Hotspot/Router use</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Battery Telemetry Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>🔋 Live Battery & Hardware Telemetry</span>
+                        <span class="card-badge badge-blue">FUEL GAUGE</span>
+                    </div>
+                    <div style="font-size: 0.88rem; display: flex; flex-direction: column; gap: 0.55rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Charging Status</span>
+                            <span style="font-weight: 600;" id="batt-status">Discharging / Idle</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Current Capacity</span>
+                            <span style="font-weight: 600;" id="batt-capacity">--%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Health (ASOC)</span>
+                            <span style="font-weight: 600; color: #34d399;" id="batt-health">100%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Discharge / Charge Cycles</span>
+                            <span style="font-weight: 600;" id="batt-cycles">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Instantaneous Current</span>
+                            <span style="font-weight: 600;" id="batt-current">-- mA</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Cell Voltage</span>
+                            <span style="font-weight: 600;" id="batt-voltage">-- mV</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Battery Temperature</span>
+                            <span style="font-weight: 600;" id="batt-temp">-- °C</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 9: 5G MODEM AT CONSOLE -->
+        <div class="tab-pane" id="pane-modem">
+            <div class="card">
+                <div class="card-header">
+                    <span>📡 MediaTek 5G Baseband Modem Console (/dev/ttyC_AT)</span>
+                    <span class="card-badge badge-purple" id="modem-console-badge">ONLINE</span>
+                </div>
+                <div style="margin-bottom: 0.8rem; font-size: 0.85rem; color: var(--text-dim);">
+                    Send diagnostic and hardware interrogation commands directly to the MediaTek Dimensity 5G modem serial interface.
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.8rem;">
+                    <button class="btn btn-outline btn-sm" onclick="sendAt('AT+CSQ')">📶 Signal Quality (AT+CSQ)</button>
+                    <button class="btn btn-outline btn-sm" onclick="sendAt('AT+ECENG=3')">🛠️ Engineering Mode (AT+ECENG=3)</button>
+                    <button class="btn btn-outline btn-sm" onclick="sendAt('AT+EPBSE?')">📡 Supported Bands (AT+EPBSE?)</button>
+                    <button class="btn btn-outline btn-sm" onclick="sendAt('AT+CFUN?')">⚡ Radio Function (AT+CFUN?)</button>
+                    <button class="btn btn-outline btn-sm" onclick="sendAt('AT+COPS?')">🏢 Network Operator (AT+COPS?)</button>
+                    <button class="btn btn-outline btn-sm" onclick="sendAt('AT+CREG?')">📋 Registration (AT+CREG?)</button>
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.8rem;">
+                    <input type="text" id="txt-at" placeholder="Enter custom AT command (e.g. AT+ECENG=3)" style="flex: 1;">
+                    <button class="btn" onclick="sendCustomAt()">Send AT Command</button>
+                </div>
+                <div class="terminal" id="term-at">Modem Serial Interface (/dev/ttyC_AT) ready. Click a quick command or type your own.</div>
+            </div>
+        </div>
+
+        <!-- TAB 10: 1-CLICK PROFILES -->
+        <div class="tab-pane" id="pane-presets">
+            <div class="grid">
+                <!-- Router Mode -->
+                <div class="preset-card">
+                    <div>
+                        <div class="preset-title" style="color: #34d399;">🌐 24/7 Dedicated 5G Router Profile</div>
+                        <div class="preset-desc">
+                            Configures phone as an uncompromising gigabit 5G router. Enables kernel IP forwarding, NAT masquerading, carrier DUN bypass, 8-core RPS steering, 16MB gigabit socket buffers, TCP Fast Open, and <strong>Store Mode bypass charging</strong> to prevent battery swelling.
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="applyPreset('router')">⚡ Activate 5G Router Profile</button>
+                </div>
+
+                <!-- Performance Profile -->
+                <div class="preset-card">
+                    <div>
+                        <div class="preset-title" style="color: #60a5fa;">🚀 Extreme Performance & Gaming</div>
+                        <div class="preset-desc">
+                            Unlocks Big Cortex-A76 cores to 2.0 GHz, sets Performance governors, turns on PPM System Boost, bypasses thermal throttling downclocks, sets Deadline I/O scheduler, 512KB read-ahead, swappiness 10, and child-first scheduling.
+                        </div>
+                    </div>
+                    <button class="btn" onclick="applyPreset('performance')">⚡ Activate Performance Profile</button>
+                </div>
+
+                <!-- Balanced Daily Driver -->
+                <div class="preset-card">
+                    <div>
+                        <div class="preset-title" style="color: #fbbf24;">⚖️ Balanced Daily Driver Profile</div>
+                        <div class="preset-desc">
+                            Optimal balance of snappy responsiveness and long battery life. Uses Schedutil governor, tuned dirty ratio 20/10 to stop UI stutter, 256KB read-ahead, swappiness 60, and stock thermal protection.
+                        </div>
+                    </div>
+                    <button class="btn btn-outline" onclick="applyPreset('balanced')">⚡ Activate Balanced Profile</button>
+                </div>
+
+                <!-- Battery Saver -->
+                <div class="preset-card">
+                    <div>
+                        <div class="preset-title" style="color: #f87171;">🔋 Extreme Battery Saver Profile</div>
+                        <div class="preset-desc">
+                            Restricts clock speeds, activates powersave governors on little cores, turns off boost engines, enables thermal throttling downclocking, and sets swappiness 160.
+                        </div>
+                    </div>
+                    <button class="btn btn-outline" onclick="applyPreset('battery')">⚡ Activate Battery Saver</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="toast">Settings updated</div>
+    <!-- Toast Notification -->
+    <div id="toast">Settings updated successfully</div>
 
     <script>
+        let autoRefresh = true;
+        let refreshTimer = null;
+
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.innerText = msg;
             t.style.display = 'block';
-            setTimeout(() => { t.style.display = 'none'; }, 3000);
+            setTimeout(() => { t.style.display = 'none'; }, 3200);
         }
 
-        async function api(action, val = '') {
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            
+            // Find tab button by text or order
+            const btns = Array.from(document.querySelectorAll('.tab-btn'));
+            const activeBtn = btns.find(b => b.getAttribute('onclick').includes(tabId));
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            const pane = document.getElementById('pane-' + tabId);
+            if (pane) pane.classList.add('active');
+        }
+
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const btn = document.getElementById('btn-pause-refresh');
+            if (autoRefresh) {
+                btn.innerText = '⏸️ Pause Polling';
+                showToast('Automatic telemetry polling resumed');
+            } else {
+                btn.innerText = '▶️ Resume Polling';
+                showToast('Automatic telemetry polling paused');
+            }
+        }
+
+        async function api(action, params = {}) {
             try {
-                const res = await fetch(`/cgi-bin/api.cgi?action=${action}&val=${encodeURIComponent(val)}`);
+                let url = `/cgi-bin/api.cgi?action=${action}`;
+                for (const [k, v] of Object.entries(params)) {
+                    url += `&${k}=${encodeURIComponent(v)}`;
+                }
+                const res = await fetch(url);
                 return await res.json();
             } catch (e) {
                 console.error(e);
@@ -259,91 +979,276 @@
             }
         }
 
-        async function loadStatus() {
+        async function loadStatus(manual = false) {
+            if (!autoRefresh && !manual) return;
             const data = await api('status');
-            if (data && data.kernel) {
-                document.getElementById('val-kernel').innerText = data.kernel;
-                document.getElementById('val-cpugov').innerText = data.cpu_governor;
-                document.getElementById('val-cpu0').innerText = Math.round(data.cpu_freq_little / 1000) + ' MHz';
-                document.getElementById('val-cpu6').innerText = Math.round(data.cpu_freq_big / 1000) + ' MHz';
-                document.getElementById('val-zram').innerText = data.zram_algo.replace('[', '').replace(']', '');
-                document.getElementById('val-network').innerText = `${data.carrier} (${data.network_type})`;
-                document.getElementById('temp-badge').innerText = `${data.soc_temp} °C`;
-                document.getElementById('carrier-badge').innerText = data.carrier;
+            if (!data || !data.kernel) return;
 
-                // Checkboxes
-                document.getElementById('chk-ipfwd').checked = (data.ip_forward === 1);
-                document.getElementById('chk-nat').checked = (data.nat_active === 1);
-                document.getElementById('chk-dun').checked = (data.dun_bypass === 1);
-                document.getElementById('chk-adbwifi').checked = (data.adb_wifi === 1);
-                document.getElementById('chk-dirty').checked = (data.dirty_ratio > 0);
+            // Header Telemetry Pills
+            document.getElementById('pill-kernel').innerText = data.kernel;
+            document.getElementById('pill-temp-soc').innerText = data.soc_temp + ' °C';
+            document.getElementById('pill-temp-batt').innerText = data.batt_temp + ' °C';
+            document.getElementById('pill-temp-modem').innerText = (data.modem_temp > 0 ? data.modem_temp : data.soc_temp) + ' °C';
+            document.getElementById('pill-temp-wifi').innerText = (data.wifi_temp > 0 ? data.wifi_temp : data.soc_temp) + ' °C';
+            document.getElementById('pill-batt-level').innerText = data.batt_capacity + '%';
+            document.getElementById('pill-batt-current').innerText = data.batt_current_ma + ' mA';
+            document.getElementById('pill-network').innerText = `${data.carrier} (${data.network_type.split(',')[0]})`;
 
-                // Selects
-                document.getElementById('sel-tcpcong').value = data.tcp_congestion;
-                document.getElementById('sel-cpugov').value = data.cpu_governor;
-                if (data.swappiness <= 20) document.getElementById('sel-swappiness').value = '10';
-                else if (data.swappiness <= 80) document.getElementById('sel-swappiness').value = '60';
-                else document.getElementById('sel-swappiness').value = '160';
+            // Dashboard Pane
+            document.getElementById('dash-kernel').innerText = data.kernel;
+            document.getElementById('dash-carrier').innerText = data.carrier;
+            document.getElementById('dash-network-type').innerText = data.network_type;
+            document.getElementById('dash-adb-status').innerText = (data.adb_wifi === 1 ? 'Online (5555)' : 'USB Only');
+            document.getElementById('dash-ifaces').innerText = data.interfaces.trim().slice(0, 45) + '...';
+
+            const f0 = Math.round(data.cpu_freq_little / 1000);
+            const f6 = Math.round(data.cpu_freq_big / 1000);
+            document.getElementById('dash-cpu0-freq').innerText = f0 + ' MHz';
+            document.getElementById('dash-cpu6-freq').innerText = f6 + ' MHz';
+            document.getElementById('dash-gov0').innerText = data.cpu_gov_little;
+            document.getElementById('dash-gov6').innerText = data.cpu_gov_big;
+            document.getElementById('dash-min0').innerText = Math.round(data.cpu_min_freq_little / 1000);
+            document.getElementById('dash-max0').innerText = Math.round(data.cpu_max_freq_little / 1000);
+            document.getElementById('dash-min6').innerText = Math.round(data.cpu_min_freq_big / 1000);
+            document.getElementById('dash-max6').innerText = Math.round(data.cpu_max_freq_big / 1000);
+            document.getElementById('bar-cpu0').style.width = Math.min(100, Math.round((f0 / 2000) * 100)) + '%';
+            document.getElementById('bar-cpu6').style.width = Math.min(100, Math.round((f6 / 2000) * 100)) + '%';
+
+            const badgeUnlock = document.getElementById('dash-unlock-badge');
+            if (data.unlocked_2ghz === 1) {
+                badgeUnlock.innerText = '2.0 GHz UNLOCKED';
+                badgeUnlock.className = 'card-badge badge-green';
+            } else {
+                badgeUnlock.innerText = '1.65 GHz THERMAL CAPPED';
+                badgeUnlock.className = 'card-badge badge-yellow';
             }
+
+            document.getElementById('dash-ipfwd').innerText = (data.ip_forward === 1 ? 'Enabled (IPv4 + IPv6)' : 'Disabled');
+            document.getElementById('dash-nat').innerText = (data.nat_active === 1 ? 'Active (rmnet, eth, wlan)' : 'Inactive');
+            document.getElementById('dash-dun').innerText = (data.dun_bypass === 1 ? 'Active (Throttle Bypassed)' : 'Default (Stock APN)');
+            document.getElementById('dash-rps').innerText = (data.rps_active === 1 ? 'Active (8 CPU Cores)' : 'Single Core');
+            document.getElementById('dash-tcp').innerText = `${data.tcp_congestion.toUpperCase()} / ${Math.round(data.rmem_max / 1048576)}MB`;
+
+            // CPU Tab
+            document.getElementById('chk-unlock2ghz').checked = (data.unlocked_2ghz === 1);
+            document.getElementById('sel-gov0').value = data.cpu_gov_little;
+            document.getElementById('sel-gov6').value = data.cpu_gov_big;
+            document.getElementById('sel-maxfreq0').value = data.cpu_max_freq_little;
+            document.getElementById('sel-maxfreq6').value = data.cpu_max_freq_big;
+
+            // PPM Tab
+            document.getElementById('chk-ppm-enabled').checked = (data.ppm_enabled === 1);
+            document.getElementById('chk-ppm-boost').checked = (data.ppm_boost === 1);
+            document.getElementById('chk-ppm-thermal').checked = (data.ppm_thermal_active === 0); // checked when bypass enabled
+
+            // Memory Tab
+            document.getElementById('sel-swappiness').value = data.swappiness;
+            document.getElementById('chk-dirty-tuned').checked = (data.dirty_ratio > 0);
+            document.getElementById('sel-vfscache').value = data.vfs_pressure;
+            document.getElementById('sel-zramalgo').value = (data.zram_algo.match(/\[(.*?)\]/) || ['', 'lzo-rle'])[1];
+
+            // Storage Tab
+            const curSched = (data.io_sched.match(/\[(.*?)\]/) || ['', 'cfq'])[1];
+            document.getElementById('sel-iosched').value = curSched;
+            document.getElementById('sel-readahead').value = data.read_ahead_kb;
+
+            // Scheduler Tab
+            document.getElementById('chk-schedchild').checked = (data.sched_child_first === 1);
+            document.getElementById('sel-schedlat').value = data.sched_latency_ns;
+
+            // Network Tab
+            document.getElementById('chk-ipfwd-tab').checked = (data.ip_forward === 1);
+            document.getElementById('chk-nat-tab').checked = (data.nat_active === 1);
+            document.getElementById('chk-dun-tab').checked = (data.dun_bypass === 1);
+            document.getElementById('chk-rps-tab').checked = (data.rps_active === 1);
+            document.getElementById('sel-tcpcong-tab').value = data.tcp_congestion;
+            document.getElementById('sel-fastopen').value = data.tcp_fastopen;
+            document.getElementById('chk-tcptw').checked = (data.tcp_tw_reuse === 1);
+            document.getElementById('chk-tcpidle').checked = (data.tcp_slow_start_idle === 0); // checked when slow start disabled
+
+            if (data.rmem_max >= 33554432) document.getElementById('sel-tcpbufs').value = '32mb';
+            else if (data.rmem_max >= 16777216) document.getElementById('sel-tcpbufs').value = '16mb';
+            else document.getElementById('sel-tcpbufs').value = 'default';
+
+            // Battery Tab
+            document.getElementById('chk-storemode').checked = (data.store_mode === 1);
+            const badgeStore = document.getElementById('batt-store-badge');
+            if (data.store_mode === 1) {
+                badgeStore.innerText = 'BYPASS CHARGING ACTIVE';
+                badgeStore.className = 'card-badge badge-green';
+            } else {
+                badgeStore.innerText = 'NORMAL CHARGING';
+                badgeStore.className = 'card-badge badge-yellow';
+            }
+            document.getElementById('batt-status').innerText = data.batt_status;
+            document.getElementById('batt-capacity').innerText = data.batt_capacity + '%';
+            document.getElementById('batt-health').innerText = data.batt_health_asoc + '%';
+            document.getElementById('batt-cycles').innerText = data.batt_cycles + ' cycles';
+            document.getElementById('batt-current').innerText = data.batt_current_ma + ' mA';
+            document.getElementById('batt-voltage').innerText = data.batt_voltage_mv + ' mV';
+            document.getElementById('batt-temp').innerText = data.batt_temp + ' °C';
+
+            if (manual) showToast('Telemetry refreshed successfully');
         }
 
-        async function toggleIpForward(val) {
-            const res = await api('set_ip_forward', val ? '1' : '0');
+        // Action Handlers
+        async function toggle2GhzUnlock(val) {
+            const res = await api('set_cpu_unlock_2ghz', { val: val ? '1' : '0' });
             showToast(res.message);
+            loadStatus(true);
         }
 
-        async function toggleNat(val) {
-            const res = await api('set_nat', val ? '1' : '0');
+        async function changeCpuGov(cluster, gov) {
+            const res = await api('set_cpu_gov', { val: gov, cluster: cluster });
             showToast(res.message);
+            loadStatus(true);
         }
 
-        async function toggleDun(val) {
-            const res = await api('set_hotspot_bypass', val ? '1' : '0');
+        async function changeCpuFreq(cluster, which, freq) {
+            const res = await api('set_cpu_freq', { cluster: cluster, which: which, val: freq });
             showToast(res.message);
+            loadStatus(true);
         }
 
-        async function toggleRps(val) {
-            const res = await api('set_rps', val ? '1' : '0');
+        async function togglePpmEnabled(val) {
+            const res = await api('set_ppm_enabled', { val: val ? '1' : '0' });
             showToast(res.message);
+            loadStatus(true);
         }
 
-        async function toggleTcpBuffers(val) {
-            const res = await api('set_tcp_buffers', val ? '1' : '0');
+        async function togglePpmBoost(val) {
+            const res = await api('set_ppm_boost', { val: val ? '1' : '0' });
             showToast(res.message);
+            loadStatus(true);
         }
 
-        async function toggleAdbWifi(val) {
-            const res = await api('set_adb_wifi', val ? '1' : '0');
+        async function togglePpmThermalBypass(val) {
+            const res = await api('set_ppm_thermal_bypass', { val: val ? '1' : '0' });
             showToast(res.message);
-        }
-
-        async function toggleDirty(val) {
-            const res = await api('set_dirty_ratio', val ? 'tuned' : 'default');
-            showToast(res.message);
-        }
-
-        async function changeTcpCong(val) {
-            const res = await api('set_tcp_cong', val);
-            showToast(res.message);
-        }
-
-        async function changeCpuGov(val) {
-            const res = await api('set_cpu_gov', val);
-            showToast(res.message);
-            loadStatus();
+            loadStatus(true);
         }
 
         async function changeSwappiness(val) {
-            const res = await api('set_swappiness', val);
+            const res = await api('set_swappiness', { val: val });
             showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleDirtyRatio(val) {
+            const res = await api('set_dirty_ratio', { val: val ? 'tuned' : 'default' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeVfsCache(val) {
+            const res = await api('set_vfs_cache_pressure', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeZramAlgo(val) {
+            const res = await api('set_zram_algo', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function dropCaches(val) {
+            const res = await api('drop_caches', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeIoSched(val) {
+            const res = await api('set_io_scheduler', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeReadAhead(val) {
+            const res = await api('set_read_ahead', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleSchedChild(val) {
+            const res = await api('set_sched_child_runs', { val: val ? '1' : '0' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeSchedLatency(val) {
+            const res = await api('set_sched_latency', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleIpForward(val) {
+            const res = await api('set_ip_forward', { val: val ? '1' : '0' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleNat(val) {
+            const res = await api('set_nat', { val: val ? '1' : '0' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleDun(val) {
+            const res = await api('set_hotspot_bypass', { val: val ? '1' : '0' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleRps(val) {
+            const res = await api('set_rps', { val: val ? '1' : '0' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeTcpCong(val) {
+            const res = await api('set_tcp_cong', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeTcpBuffers(val) {
+            const res = await api('set_tcp_buffers', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function changeFastOpen(val) {
+            const res = await api('set_tcp_fastopen', { val: val });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleTcpTwReuse(val) {
+            const res = await api('set_tcp_tw_reuse', { val: val ? '1' : '0' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleTcpSlowStartIdle(val) {
+            // Checked means disable slow start after idle (val = 0)
+            const res = await api('set_tcp_slow_start_idle', { val: val ? '0' : '1' });
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        async function toggleStoreMode(val) {
+            const res = await api('set_store_mode', { val: val ? '1' : '0' });
+            showToast(res.message);
+            loadStatus(true);
         }
 
         async function sendAt(cmd) {
             document.getElementById('txt-at').value = cmd;
             const term = document.getElementById('term-at');
-            term.innerText = `> ${cmd}\nExecuting...`;
-            const res = await api('send_at', cmd);
-            term.innerText = `> ${cmd}\n${res.response || res.message}`;
+            term.innerText = `> ${cmd}\nSending command to /dev/ttyC_AT...`;
+            const res = await api('send_at', { val: cmd });
+            term.innerText = `> ${cmd}\n${res.response || res.message || 'No response'}`;
         }
 
         async function sendCustomAt() {
@@ -351,15 +1256,24 @@
             if (cmd) sendAt(cmd);
         }
 
-        async function revertAll() {
-            if (!confirm('Revert all kernel parameters, routing rules, and CPU governors to factory defaults?')) return;
-            const res = await api('revert_all');
+        async function applyPreset(preset) {
+            if (!confirm(`Apply the ${preset.toUpperCase()} profile preset? This will optimize multiple kernel parameters.`)) return;
+            const res = await api('apply_preset', { val: preset });
             showToast(res.message);
-            loadStatus();
+            loadStatus(true);
         }
 
-        window.onload = loadStatus;
-        setInterval(loadStatus, 5000);
+        async function revertAll() {
+            if (!confirm('Revert all kernel parameters, CPU governors, routing rules, and sysctl nodes to factory stock defaults?')) return;
+            const res = await api('revert_all');
+            showToast(res.message);
+            loadStatus(true);
+        }
+
+        window.onload = () => {
+            loadStatus();
+            refreshTimer = setInterval(() => loadStatus(false), 3500);
+        };
     </script>
 </body>
 </html>

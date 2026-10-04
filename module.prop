@@ -1,6 +1,6 @@
 id=galaxy-kernel-master
 name=Galaxy Kernel Master & Router Control Panel
-version=v1.0
-versionCode=100
-author=vishalhoc & Antigravity
-description=Kernel-level performance optimizer, router engine, 5G modem controller, and Web UI control panel for Samsung Galaxy M32 5G (MT6853).
+version=v2.0
+versionCode=200
+author=hoc
+description=Ultimate MediaTek Dimensity 720 (MT6853) Kernel Engine: CPU DVFS & 2.0GHz Unlock, MediaTek PPM Power & Thermal Engine, UFS I/O Schedulers, Virtual Memory & ZRAM, Network & Gigabit TCP, Battery & Charge Protection, and 5G Modem Controller with Web UI.
